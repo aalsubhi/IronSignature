@@ -1,0 +1,388 @@
+cd  ~/Library/Android/sdk/platform-tools/
+
+./adb shell getevent -pl
+above commnd to get the touchscreen name
+
+/dev/input/event4
+name: "chipone-tddi"
+
+Chipone (ICN / Chipone ICs) is a TDDI touchscreen controller commonly used in MediaTek low-cost phones (including UMIDIGI).
+
+----------------------------------------------------
+
+cd  ~/Library/Android/sdk/platform-tools/
+
+./adb devices
+
+
+to access touch screen
+
+./adb shell getevent -lt /dev/input/event4
+
+What you have
+EV_ABS ABS_MT_PRESSURE (003a) → controller’s digitized “electrical pressure” (0–50+ up to 0–255).
+EV_ABS ABS_MT_TOUCH_MAJOR (0030) → size of the contact ellipse, in controller units (0–50+).
+EV_ABS ABS_MT_POSITION_X/Y → pixel coordinates.
+EV_KEY BTN_TOUCH DOWN/UP → touch lifecycle.
+EV_ABS ABS_MT_TRACKING_ID → new finger ID vs ffffffff (release).
+EV_SYN SYN_REPORT → frame boundary (all values reported together).
+
+
+
+
+---------------------------------------------------------------
+
+*#*#3646633#*#*     (MTK Engineering Mode)
+
+---------------------------------------------------------------
+
+1- create a workspace
+
+mkdir -p android_kernel_work
+cd android_kernel_work
+
+
+2- Pull identifiers from your UMIDIGI Power 5 (so we match sources)
+Run these:
+adb shell getprop ro.product.model
+adb shell getprop ro.product.device
+adb shell getprop ro.build.display.id
+adb shell getprop ro.build.version.release
+adb shell uname -a
+
+
+http://huyle.de/blog/capacitive-images/
+
+
+
+
+for enabling root:
+adb shell
+su
+
+
+to exit from adb shell:
+exit
+
+
+
+1. Lock in the geometry (this matters later)
+X (TX): 16
+Y (RX): 34
+Total cells: 544
+Every full dump (reference, rawcap, delta) must return exactly 544 integers. If it doesn’t, something upstream failed.
+
+
+clean baseline (recommended for sensing):
+This avoids USB grounding but still lets you type commands.
+Step 1: Enable wireless ADB (once, USB plugged)
+
+adb tcpip 5555
+adb shell ip addr show wlan0
+
+Note the phone’s IP address.
+
+
+Step 2: Unplug USB cable
+The phone is now electrically floating.
+Step 3: Reconnect ADB over Wi-Fi
+
+adb connect <PHONE_IP>:5555
+adb shell
+su
+
+Step 4: Run your sensing commands (clean environment)
+echo run_reference_read_all > /sys/class/sec/tsp/cmd
+cat /sys/class/sec/tsp/cmd_status
+
+
+echo run_delta_read_all > /sys/class/sec/tsp/cmd
+cat /sys/class/sec/tsp/cmd_result
+
+First experiment:
+-USB connected
+-laptop on AC
+-worst-case grounding
+
+N = 544        → full 16 × 34 mutual-cap matrix ✔
+mean_abs = 1.74
+max_abs = 5
+
+
+Second experiment:
+no USB wireless ADB
+
+N = 544        → full 16 × 34 mutual-cap matrix ✔
+mean_abs = 1.450
+max_abs = 6
+
+Check if the kernel exposes a cmd list:
+
+ls /sys/class/sec/tsp/
+all_touch_count  cmd_result         fw_version    input        power            status     wet_mode
+checksum         cmd_status         get_lp_dump   ito_check    pressure_enable  subsystem  z_value
+cmd              comm_err_count     heatmap_mode  module_id    raw_check        uevent
+cmd_list         force_recal_count  holding_time  multi_count  scrub_pos        vendor
+
+
+Step 1: Dump the full command list:
+
+cat /sys/class/sec/tsp/cmd_list
+cat /sys/class/sec/tsp/cmd_list
+++factory command list++
+fw_update
+get_fw_ver_bin
+get_fw_ver_ic
+get_config_ver
+get_threshold
+module_off_master
+module_on_master
+get_chip_vendor
+get_chip_name
+set_mis_cal_spec
+get_mis_cal_info
+get_wet_mode
+get_x_num
+get_y_num
+get_x_cross_routing
+get_y_cross_routing
+get_checksum_data
+run_reference_read
+run_reference_read_all
+get_reference
+run_rawcap_read
+run_rawcap_read_all
+get_rawcap
+run_rawcap_gap_read_all
+run_delta_read
+run_delta_read_all
+get_delta
+run_rawdata_stdev_read
+run_rawdata_p2p_read_all
+run_rawdata_read_type
+run_rawdata_read_all
+run_self_reference_read
+run_self_reference_read_all
+run_self_rawcap_read
+run_self_rawcap_read_all
+run_self_rawcap_gap_read_all
+run_rawcap_high_freq_read_all
+run_self_delta_read
+run_self_delta_read_all
+run_force_calibration
+get_force_calibration
+run_fs_cal_pre_press
+run_fs_cal_get_data
+run_fs_cal_post_press
+enable_fs_cal_table
+enable_coordinate_report
+enable_gain_limit
+run_trx_short_test
+set_tsp_test_result
+get_tsp_test_result
+increase_disassemble_count
+get_disassemble_count
+glove_mode
+clear_cover_mode
+dead_zone_enable
+drawing_test_enable
+set_lowpower_mode
+set_wirelesscharger_mode
+spay_enable
+set_aod_rect
+get_aod_rect
+aod_enable
+set_grip_data
+dex_enable
+brush_enable
+force_touch_active
+set_touchable_area
+set_log_level
+debug
+set_touch_mode
+set_palm_detection_enable
+set_grip_detection_enable
+set_wet_mode_enable
+set_noise_mode_enable
+set_continuous_report_enable
+set_charger_nb_enable
+set_print_format
+run_cal_check
+
+
+
+These commands read Tx × Rx values. Raw capacitance:
+echo "run_rawcap_read_all" > /sys/class/sec/tsp/cmd
+cat /sys/class/sec/tsp/cmd_result
+or
+echo "get_rawcap" > /sys/class/sec/tsp/cmd
+cat /sys/class/sec/tsp/cmd_result
+
+Delta (change from baseline):This is often the cleanest signal for physiology-related effects:
+echo "run_delta_read_all" > /sys/class/sec/tsp/cmd
+cat /sys/class/sec/tsp/cmd_result
+
+Or:
+echo "get_delta" > /sys/class/sec/tsp/cmd
+cat /sys/class/sec/tsp/cmd_result
+
+
+Reference (baseline):
+echo "run_reference_read_all" > /sys/class/sec/tsp/cmd
+cat /sys/class/sec/tsp/cmd_result
+
+Signal quality & structure (important for research)
+These exist specifically for diagnostics — and sensing researchers love them.
+Standard deviation:
+echo "run_rawdata_stdev_read" > /sys/class/sec/tsp/cmd
+cat /sys/class/sec/tsp/cmd_result
+
+Peak-to-peak:
+echo "run_rawdata_p2p_read_all" > /sys/class/sec/tsp/cmd
+cat /sys/class/sec/tsp/cmd_result
+
+Gap analysis:
+echo "run_rawcap_gap_read_all" > /sys/class/sec/tsp/cmd
+cat /sys/class/sec/tsp/cmd_result
+
+These are extremely useful for:
+Stability analysis
+Contact consistency
+Subtle physiological modulation
+
+Self-capacitance (finger / tissue coupling)
+These ignore Tx×Rx intersections and look at single-electrode effects.
+echo "run_self_rawcap_read_all" > /sys/class/sec/tsp/cmd
+cat /sys/class/sec/tsp/cmd_result
+
+echo "run_self_delta_read_all" > /sys/class/sec/tsp/cmd
+cat /sys/class/sec/tsp/cmd_result
+
+Self-cap is often more sensitive to:
+Finger hydration
+Blood volume
+Contact pressure
+
+Commands that help control the experiment:
+Disable noise compensation
+echo "set_noise_mode_enable,0" > /sys/class/sec/tsp/cmd
+
+Force continuous reporting
+echo "set_continuous_report_enable,1" > /sys/class/sec/tsp/cmd
+
+Enable coordinate reporting (for alignment)
+echo "enable_coordinate_report,1" > /sys/class/sec/tsp/cmd
+
+
+Enable / disable palm & grip logic
+
+echo "set_palm_detection_enable,0" > /sys/class/sec/tsp/cmd
+echo "set_grip_detection_enable,0" > /sys/class/sec/tsp/cmd
+
+
+
+1- Core biophysical signal carriers (highest priority)
+These are non-negotiable. If iron deficiency shows up anywhere, it will show up here first.
+Mutual capacitance (spatial + vascular coupling)
+run_delta_read_all
+get_delta
+run_rawcap_read_all
+get_rawcap
+run_reference_read_all
+get_reference
+
+Why these matter
+Delta captures dynamic changes in tissue coupling
+Rawcap captures absolute dielectric properties
+Reference reveals baseline shifts and drift
+Iron deficiency plausibly affects:
+peripheral perfusion
+blood volume fraction
+effective dielectric constant of fingertip tissue
+These commands are your primary signal space.
+
+2- Self-capacitance (blood + hydration sensitivity)
+Often more sensitive to physiological state than mutual cap.
+run_self_rawcap_read_all
+run_self_delta_read_all
+run_self_reference_read_all
+Why
+Self-cap electrodes are directly influenced by:
+skin hydration
+blood pooling
+tissue conductivity
+Iron deficiency → anemia → altered oxygen delivery → altered microcirculation
+Self-cap sees this earlier than mutual cap.
+
+
+3- Signal stability & micro-variability (very important, underused)
+These do not measure level, but consistency. This is where subtle conditions often emerge.
+run_rawdata_stdev_read
+run_rawdata_p2p_read_all
+run_rawcap_gap_read_all
+run_rawcap_high_freq_read_all
+Why
+Iron deficiency is associated (indirectly) with:
+reduced vascular responsiveness
+altered autonomic regulation
+increased micro-instability under pressure
+These commands let you study:
+temporal jitter
+spatial unevenness
+high-frequency noise vs physiological modulation
+Many “negative” results become positive here.
+
+4- Force / pressure proxies (secondary but relevant)
+Iron deficiency does not change force, but it changes how tissue responds to force.
+force_touch_active
+run_force_calibration
+get_force_calibration
+run_fs_cal_pre_press
+run_fs_cal_get_data
+run_fs_cal_post_press
+Why
+Capacitive force inference depends on:
+tissue compressibility
+blood displacement under pressure
+recovery dynamics
+Iron deficiency may alter post-press recovery, not peak force.
+
+
+5- Wet / hydration discrimination (critical confound control)
+These do not detect iron deficiency directly, but they are essential to separate hydration from hematology.
+set_wet_mode_enable
+get_wet_mode
+set_noise_mode_enable
+Why
+Hydration changes capacitance strongly.
+Iron deficiency effects are weaker and easily masked.
+You need these to:
+model hydration explicitly
+remove false positives
+build hydration-invariant features
+
+6- Temporal behavior summaries (weak labels, but useful)
+These are firmware interpretations, not raw physics—but that’s exactly why they’re interesting.
+holding_time
+multi_count
+all_touch_count
+force_recal_count
+Why
+Iron deficiency may subtly influence:
+fatigue
+steadiness
+micro-hesitation
+recalibration frequency (due to unstable coupling)
+These are secondary features, not primary evidence.
+
+
+7- Commands you should explicitly exclude (to stay honest)
+These are not physiologically meaningful for iron deficiency and should not be framed as such:
+UI / mode toggles (aod_enable, spay_enable, dex_enable)
+Geometry only (get_x_num, get_y_num)
+Manufacturing / fault tests (run_trx_short_test, ito_check)
+Firmware identity (fw_version, checksum)
+
+
+to get file of the data:
+adb pull /storage/emulated/0/Android/data/com.example.ironsignature/files/IronSignature/

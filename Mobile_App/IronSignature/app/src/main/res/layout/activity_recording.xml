@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/black">
+
+    <!-- Background: Fullscreen finger placement circle -->
+    <com.example.ironsignature.FingerCircleView
+        android:id="@+id/fingerCircle"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- TOP STATUS BAR -->
+    <LinearLayout
+        android:id="@+id/statusBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:orientation="vertical"
+        android:background="#80000000"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/tvParticipant"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="P001"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/white"/>
+
+        <TextView
+            android:id="@+id/tvStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="PLACE FINGER IN CIRCLE"
+            android:textSize="18sp"
+            android:textColor="@android:color/white"
+            android:layout_marginTop="4dp"/>
+    </LinearLayout>
+
+    <!-- HUD: Timer + Pressure bar (TOP-CENTER, NOT on finger) -->
+    <LinearLayout
+        android:id="@+id/hudBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/statusBar"
+        android:layout_marginTop="10dp"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp">
+
+        <TextView
+            android:id="@+id/tvTimer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="00:00"
+            android:textSize="34sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/white"/>
+
+        <!-- Pressure color bar (responsive width) -->
+        <TextView
+            android:id="@+id/tvPressure"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginStart="48dp"
+            android:layout_marginEnd="48dp"
+            android:text="P=0.0"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/black"
+            android:gravity="center"
+            android:background="#FFEB3B" />
+    </LinearLayout>
+
+    <!-- BOTTOM CONTROLS -->
+    <LinearLayout
+        android:id="@+id/controlBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:orientation="vertical"
+        android:background="#80000000"
+        android:padding="20dp">
+
+        <Button
+            android:id="@+id/btnCalibrate"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="CALIBRATE"
+            android:textSize="16sp"
+            android:textColor="@android:color/white"
+            android:backgroundTint="#2196F3"/>
+
+        <Button
+            android:id="@+id/btnStart"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="10dp"
+            android:text="START 60s RECORDING"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/white"
+            android:backgroundTint="#4CAF50"/>
+
+        <Button
+            android:id="@+id/btnBack"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="10dp"
+            android:text="BACK / NEW PARTICIPANT"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/white"
+            android:backgroundTint="#9E9E9E"/>
+    </LinearLayout>
+
+</RelativeLayout>
