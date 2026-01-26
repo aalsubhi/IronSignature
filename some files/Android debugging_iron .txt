@@ -386,3 +386,7 @@ Firmware identity (fw_version, checksum)
 
 to get file of the data:
 adb pull /storage/emulated/0/Android/data/com.example.ironsignature/files/IronSignature/
+
+to delete all files:
+adb shell pm clear com.example.ironsignature
+ 

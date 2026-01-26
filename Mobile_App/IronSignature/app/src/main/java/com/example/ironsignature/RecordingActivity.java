@@ -21,6 +21,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -30,7 +32,10 @@ public class RecordingActivity extends Activity {
     private static final String TSP_CMD = "/sys/class/sec/tsp/cmd";
     private static final String TSP_RESULT = "/sys/class/sec/tsp/cmd_result";
 
-    private static final long RECORD_DURATION_MS = 60_000;
+    private final BlockingQueue<RawFrame> rawQueue =
+            new LinkedBlockingQueue<>(256);
+
+    private static final long RECORD_DURATION_MS = 61_000;
     private static final int MATRIX_SIZE = 1156;
 
     private static final int COLOR_GREEN = 0xFF4CAF50;
@@ -257,6 +262,7 @@ public class RecordingActivity extends Activity {
         sampleCount = 0;
         targetPressure = 0;
         samples.clear();
+        rawQueue.clear();
         startTime = System.currentTimeMillis();
 
         ui.post(() -> {
@@ -271,7 +277,8 @@ public class RecordingActivity extends Activity {
             if (isRecording) stopRecording();
         }, RECORD_DURATION_MS);
 
-        new Thread(this::samplingLoop).start();
+        new Thread(this::samplingLoop, "TSP-Sampler").start();
+        new Thread(this::processingLoop, "TSP-Processor").start();
     }
 
     private void stopRecording() {
@@ -307,18 +314,36 @@ public class RecordingActivity extends Activity {
     // =====================================================
     private void samplingLoop() {
         while (isRecording) {
+
             List<String> out = runRootCmd("run_delta_read_all");
+
             if (!out.isEmpty() && !out.get(0).startsWith("ERROR")) {
-                String raw = String.join(" ", out);
-//                System.out.println(raw);
-                double pressure = computePressure(raw);
-                samples.add(new DataSample(raw, pressure, System.currentTimeMillis()));
+
+                String raw = String.join(" ", out)
+                        .replaceFirst("^run_delta_read_all:\\s*", "")
+                        .replaceFirst(",\\s*$", "");
+
+                // ⬇️ enqueue raw frame ONLY
+                rawQueue.offer(new RawFrame(raw, System.currentTimeMillis()));
             }
 
+        }
+    }
+
+    private void processingLoop() {
+        while (isRecording || !rawQueue.isEmpty()) {
             try {
-                Thread.sleep(450);
-            } catch (InterruptedException ignored) {
-            }
+                RawFrame f = rawQueue.take();   // blocks if empty
+
+                double pressure = computePressure(f.raw);
+
+                samples.add(new DataSample(
+                        f.raw,
+                        pressure,
+                        f.ts
+                ));
+
+            } catch (InterruptedException ignored) {}
         }
     }
 
@@ -358,7 +383,7 @@ public class RecordingActivity extends Activity {
             if (!dir.exists()) dir.mkdirs();
 
             String ts = new SimpleDateFormat(
-                    "yyyyMMdd_HHmmss", Locale.US
+                    "yyyy_MM_dd_HH_mm_ss", Locale.US
             ).format(new Date());
 
             File file = new File(dir,
@@ -398,5 +423,18 @@ public class RecordingActivity extends Activity {
         }
     }
 
+
+
+    private static class RawFrame {
+        final String raw;
+        final long ts;
+        RawFrame(String r, long t) {
+            raw = r;
+            ts = t;
+        }
+    }
+
 }
+
+
 
