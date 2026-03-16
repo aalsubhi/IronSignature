@@ -315,13 +315,13 @@ public class RecordingActivity extends Activity {
     private void samplingLoop() {
         while (isRecording) {
 
-            List<String> out = runRootCmd("run_delta_read_all");
+            List<String> out = runRootCmd("run_rawcap_read_all");  // run_delta_read_all
 
             if (!out.isEmpty() && !out.get(0).startsWith("ERROR")) {
 
                 String raw = String.join(" ", out)
-                        .replaceFirst("^run_delta_read_all:\\s*", "")
-                        .replaceFirst(",\\s*$", "");
+                        .replaceFirst("^run_rawcap_read_all:\\s*", "")
+                        .replaceFirst(",\\s*$", "");   // run_delta_read_all
 
                 // ⬇️ enqueue raw frame ONLY
                 rawQueue.offer(new RawFrame(raw, System.currentTimeMillis()));
@@ -351,7 +351,7 @@ public class RecordingActivity extends Activity {
     // SIGNAL PROCESSING
     // =====================================================
     private double computePressure(String raw) {
-        int[] v = parseDeltas(raw);
+        int[] v = parseRawcap(raw);
         int peak = 0, area = 0;
 
         for (int x : v) {
@@ -364,7 +364,7 @@ public class RecordingActivity extends Activity {
         return peak * Math.sqrt(area / 100.0);
     }
 
-    private int[] parseDeltas(String raw) {
+    private int[] parseRawcap(String raw) {
         int[] arr = new int[MATRIX_SIZE];
         Matcher m = Pattern.compile("-?\\d+").matcher(raw);
         int i = 0;
